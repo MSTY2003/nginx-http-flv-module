@@ -1,0 +1,50 @@
+# 适用：Nginx + http-flv-module Windows 编译
+version: 1.25.3
+
+build: off               # 关闭默认的MSBuild模式
+
+environment:
+  NGINX_VER: 1.25.3      # 可根据需要修改为其他Nginx版本
+  PCRE_VER: 8.45
+  ZLIB_VER: 1.2.13
+  OPENSSL_VER: 1.1.1w
+
+install:
+  - ps: >-
+      $ErrorActionPreference = "Stop"
+      wget http://nginx.org/download/nginx-$env:NGINX_VER.zip -OutFile nginx.zip
+      7z x nginx.zip | Out-Default
+      wget https://ftp.pcre.org/pub/pcre/pcre-$env:PCRE_VER.zip -OutFile pcre.zip
+      7z x pcre.zip | Out-Default
+      wget https://zlib.net/zlib$($env:ZLIB_VER -replace '\.', '')-win64.zip -OutFile zlib.zip
+      7z x zlib.zip | Out-Default
+      wget https://www.openssl.org/source/openssl-$env:OPENSSL_VER.tar.gz -OutFile openssl.tar.gz
+      7z x openssl.tar.gz -so | 7z x -aoa -ttar -o"openssl-$env:OPENSSL_VER" | Out-Default
+
+before_build:
+  - cd nginx-%NGINX_VER%
+  - ps: echo "当前目录: $PWD"
+
+build_script:
+  - call auto\configure --with-cc=cl ^
+      --prefix=..\nginx-output ^
+      --with-pcre=..\pcre-%PCRE_VER% ^
+      --with-zlib=..\zlib-$ZLIB_VER ^
+      --with-openssl=..\openssl-%OPENSSL_VER% ^
+      --add-module=..\nginx-http-flv-module ^
+      --with-http_ssl_module
+  - nmake -f auto\makefile
+
+after_build:
+  - cd ..
+  - mkdir nginx-output\conf
+  - copy nginx-%NGINX_VER%\conf\*.* nginx-output\conf\
+  - copy nginx-%NGINX_VER%\objs\nginx.exe nginx-output\
+  - copy nginx-%NGINX_VER%\objs\*.dll nginx-output\
+  - copy nginx-%NGINX_VER%\objs\*.pdb nginx-output\
+  - copy README.md nginx-output\
+  - 7z a nginx-http-flv-windows.zip .\nginx-output\*
+
+artifacts:
+  - path: nginx-http-flv-windows.zip
+    name: Nginx-package
