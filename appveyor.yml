@@ -9,27 +9,29 @@ environment:
   OPENSSL_VER: 1.1.1w
 
 install:
-  - curl -LO http://nginx.org/download/nginx-%NGINX_VER%.zip
+  - curl -L -o nginx-%NGINX_VER%.zip "http://nginx.org/download/nginx-%NGINX_VER%.zip"
   - 7z x nginx-%NGINX_VER%.zip
-  - curl -LO https://ftp.pcre.org/pub/pcre/pcre-%PCRE_VER%.zip
+  # Use SourceForge mirror for PCRE to avoid schannel cert issues
+  - curl -L -o pcre-%PCRE_VER%.zip "https://sourceforge.net/projects/pcre/files/pcre/%PCRE_VER%/pcre-%PCRE_VER%.zip/download"
   - 7z x pcre-%PCRE_VER%.zip
-  - curl -LO https://zlib.net/zlib%ZLIB_VER:~0,1%%ZLIB_VER:~2,1%%ZLIB_VER:~4,1%-win64.zip
-  - 7z x zlib%ZLIB_VER:~0,1%%ZLIB_VER:~2,1%%ZLIB_VER:~4,1%-win64.zip
-  - curl -LO https://www.openssl.org/source/openssl-%OPENSSL_VER%.tar.gz
+  - curl -L -o zlib-%ZLIB_VER%.tar.gz "https://zlib.net/zlib-%ZLIB_VER%.tar.gz"
+  - 7z x zlib-%ZLIB_VER%.tar.gz
+  - curl -L -o openssl-%OPENSSL_VER%.tar.gz "https://www.openssl.org/source/openssl-%OPENSSL_VER%.tar.gz"
   - 7z x openssl-%OPENSSL_VER%.tar.gz -so | 7z x -aoa -ttar -oopenssl-%OPENSSL_VER%
 
 before_build:
   - cd nginx-%NGINX_VER%
 
 build_script:
-  - call auto\configure --prefix=..\nginx-output --with-pcre=..\pcre-%PCRE_VER% --with-zlib=..\zlib-%ZLIB_VER% --with-openssl=..\openssl-%OPENSSL_VER% --add-module=..\nginx-http-flv-module --with-http_ssl_module
+  - call auto\configure --with-cc=cl --prefix=..\nginx-output --with-pcre=..\pcre-%PCRE_VER% --with-zlib=..\zlib-%ZLIB_VER% --with-openssl=..\openssl-%OPENSSL_VER% --add-module=..\nginx-http-flv-module --with-http_ssl_module
   - nmake -f auto\makefile
 
 after_build:
   - cd ..
-  - mkdir nginx-output\conf
+  - if not exist nginx-output\conf mkdir nginx-output\conf
   - copy nginx-%NGINX_VER%\conf\*.* nginx-output\conf\
   - copy nginx-%NGINX_VER%\objs\nginx.exe nginx-output\
+  - copy nginx-%NGINX_VER%\objs\*.dll nginx-output\  || echo "no dlls"
   - 7z a nginx-http-flv-windows.zip .\nginx-output\*
 
 artifacts:
