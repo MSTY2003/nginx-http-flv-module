@@ -1,4 +1,4 @@
-version: 1.25.4
+version: 1.25.5
 
 build: off
 
@@ -11,11 +11,22 @@ environment:
 install:
   - curl -L -o nginx-%NGINX_VER%.zip "http://nginx.org/download/nginx-%NGINX_VER%.zip"
   - 7z x nginx-%NGINX_VER%.zip
-  # Use SourceForge mirror for PCRE to avoid schannel cert issues
+
   - curl -L -o pcre-%PCRE_VER%.zip "https://sourceforge.net/projects/pcre/files/pcre/%PCRE_VER%/pcre-%PCRE_VER%.zip/download"
   - 7z x pcre-%PCRE_VER%.zip
-  - curl -L -o zlib-%ZLIB_VER%.tar.gz "https://zlib.net/zlib-%ZLIB_VER%.tar.gz"
-  - 7z x zlib-%ZLIB_VER%.tar.gz
+
+  # Use GitHub archive for zlib (avoids small-html/redirect problems)
+  - curl -L -o zlib-%ZLIB_VER%.zip "https://github.com/madler/zlib/archive/refs/tags/v%ZLIB_VER%.zip"
+  - 7z x zlib-%ZLIB_VER%.zip
+  - ps: |
+      $d = Get-ChildItem -Directory | Where-Object { $_.Name -like 'zlib*' } | Select-Object -First 1
+      if ($d) {
+        if ($d.Name -ne "zlib-$env:ZLIB_VER") {
+          Rename-Item -Path $d.FullName -NewName ("zlib-" + $env:ZLIB_VER)
+        }
+      } else { Write-Host "zlib folder not found after extraction" }
+
+  # OpenSSL: try official tar.gz (if it fails we can switch to another mirror)
   - curl -L -o openssl-%OPENSSL_VER%.tar.gz "https://www.openssl.org/source/openssl-%OPENSSL_VER%.tar.gz"
   - 7z x openssl-%OPENSSL_VER%.tar.gz -so | 7z x -aoa -ttar -oopenssl-%OPENSSL_VER%
 
